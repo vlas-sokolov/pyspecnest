@@ -9,21 +9,26 @@ from astropy import log
 
 # TODO: goal #2 is writing output fits files with MAP/MLE parameters
 
-def analyzer_xy(x, y, npeaks, output_dir, name_id = 'g35-nh3', npars = 6):
-    suffix =  'x{}y{}'.format(x, y)
-    return get_analyzer(output_dir = output_dir, name_id = name_id,
-                        suffix = suffix, ndims = npars * npeaks,
-                        chain_prefix = '{}-'.format(npeaks))
+
+def analyzer_xy(x, y, npeaks, output_dir, name_id='g35-nh3', npars=6):
+    suffix = 'x{}y{}'.format(x, y)
+    return get_analyzer(
+        output_dir=output_dir,
+        name_id=name_id,
+        suffix=suffix,
+        ndims=npars * npeaks,
+        chain_prefix='{}-'.format(npeaks))
+
 
 def get_analyzer(output_dir, name_id, suffix, ndims, chain_prefix='1-'):
-    chains_dir = '{}chains/{}_{}/{}'.format(output_dir,
-                 name_id, suffix, chain_prefix)
-    a = pymultinest.Analyzer(outputfiles_basename = chains_dir,
-                             n_params = ndims)
+    chains_dir = '{}chains/{}_{}/{}'.format(output_dir, name_id, suffix,
+                                            chain_prefix)
+    a = pymultinest.Analyzer(outputfiles_basename=chains_dir, n_params=ndims)
     return a
 
-def lnK_xy(peaks = [1, 2, 3], silent = False,
-           dict_key_formatter = '{}/{}', **kwargs):
+
+def lnK_xy(peaks=[1, 2, 3], silent=False, dict_key_formatter='{}/{}',
+           **kwargs):
     """
     Returns Bayes' factors between given peak values.
 
@@ -44,7 +49,7 @@ def lnK_xy(peaks = [1, 2, 3], silent = False,
     ln_K_dict = {}
     for i, j in combinations(peaks, 2):
         try:
-            ln_K = bayes_factor(peak_stats[j-1], peak_stats[i-1])
+            ln_K = bayes_factor(peak_stats[j - 1], peak_stats[i - 1])
         except IOError:
             ln_K = ufloat(np.nan, np.nan)
         if not silent:
@@ -54,7 +59,8 @@ def lnK_xy(peaks = [1, 2, 3], silent = False,
 
     return ln_K_dict
 
-def lnZ_xy(peaks = [1, 2, 3], silent = False, lnZ0 = None, **kwargs):
+
+def lnZ_xy(peaks=[1, 2, 3], silent=False, lnZ0=None, **kwargs):
     """
     Returns model evidence for given npeak values.
 
@@ -88,6 +94,7 @@ def lnZ_xy(peaks = [1, 2, 3], silent = False, lnZ0 = None, **kwargs):
         ln_Z_npeaks = [ufloat(*lnZ0)] + ln_Z_npeaks
     return ln_Z_npeaks
 
+
 def get_global_evidence(a):
     """
     PyMultiNest's Analyzer has a get_stats() method, but it's
@@ -100,14 +107,15 @@ def get_global_evidence(a):
     a._read_error_into_dict(lines[1], stats)
     Z_str = 'Nested Importance Sampling Global Log-Evidence'
     Z = stats[Z_str.lower()]
-    Zerr = stats[(Z_str+' error').lower()]
+    Zerr = stats[(Z_str + ' error').lower()]
 
     stats['global evidence'] = Z
     stats['global evidence error'] = Zerr
 
     return stats
 
-def get_stats(a, mode = "slow"):
+
+def get_stats(a, mode="slow"):
     if mode == "slow":
         return a.get_stats()
     if mode == "fast":
@@ -115,15 +123,16 @@ def get_stats(a, mode = "slow"):
     else:
         raise ValueError("mode should be one of the ['slow', 'fast']")
 
+
 def ln_Z(a):
     try:
         stats = get_stats(a, 'fast')
-        ln_z = ufloat(stats['global evidence'],
-        stats['global evidence error'])
+        ln_z = ufloat(stats['global evidence'], stats['global evidence error'])
     except IOError:
         ln_z = ufloat(np.nan, np.nan)
 
     return ln_z
+
 
 def bayes_factor(a1, a2):
     """ Returns ln(K) for two Analyzer instances. """
@@ -132,8 +141,9 @@ def bayes_factor(a1, a2):
 
     return ln_K
 
-def cube_K(shape, rms, data, peaks = [0, 1, 2, 3], origin = (0, 0),
-           header = None, writeto = None, **kwargs):
+
+def cube_K(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
+           header=None, writeto=None, **kwargs):
     """
     Construct a fits HDU with ln(K) values for all xy positions in a
     cube of a given shape. Optionally, writes a fits file.
@@ -145,23 +155,23 @@ def cube_K(shape, rms, data, peaks = [0, 1, 2, 3], origin = (0, 0),
         # TODO: implement this
         raise NotImplementedError("wip")
 
-    Zs = cube_Z(shape, rms, data, peaks = peaks, origin = origin,
-                header = header, writeto = None, **kwargs).data
+    Zs = cube_Z(shape, rms, data, peaks=peaks, origin=origin,
+                header=header, writeto=None, **kwargs).data
 
     # this -2 denotes the that the K array is a difference of Z array
     # layers. It's 2, and not 1, because there are error layers as well
-    zsize_K = Zs.shape[0]/2 - 1
-    lnKs = np.empty(shape = (zsize_K, ) + shape)
+    zsize_K = Zs.shape[0] / 2 - 1
+    lnKs = np.empty(shape=(zsize_K, ) + shape)
     lnKs.fill(np.nan)
     err_lnKs = lnKs.copy()
     for i in np.arange(zsize_K) + 1:
         # for all (i, j) such that i = j + 1
-        Z_i = unumpy.uarray(Zs[i  ], Zs[i + zsize_K + 1])
-        Z_j = unumpy.uarray(Zs[i-1], Zs[i + zsize_K    ])
+        Z_i = unumpy.uarray(Zs[i], Zs[i + zsize_K + 1])
+        Z_j = unumpy.uarray(Zs[i - 1], Zs[i + zsize_K])
         K_ij = Z_i - Z_j
 
-        lnKs[i-1] = unumpy.nominal_values(K_ij)
-        err_lnKs[i-1] = unumpy.std_devs(K_ij)
+        lnKs[i - 1] = unumpy.nominal_values(K_ij)
+        err_lnKs[i - 1] = unumpy.std_devs(K_ij)
 
     # FIXME this breaks if header is None!
     # adapt dummy header to the task at hand
@@ -180,21 +190,23 @@ def cube_K(shape, rms, data, peaks = [0, 1, 2, 3], origin = (0, 0),
         hdu.header['PLANE{}'.format(i)] = head_key
 
     if writeto:
-        hdu.writeto(writeto, clobber = True)
+        hdu.writeto(writeto, clobber=True)
 
     return hdu
 
-def get_zero_evidence(data, rms, normalize = True):
+
+def get_zero_evidence(data, rms, normalize=True):
     if normalize:
-        norm_C = -data.shape[0] * np.log(np.sqrt(2*np.pi) * rms)
+        norm_C = -data.shape[0] * np.log(np.sqrt(2 * np.pi) * rms)
     else:
         norm_C = 0
 
-    ln_Z0 = norm_C - (np.square(data) / (2*rms**2)).sum(axis = 0)
+    ln_Z0 = norm_C - (np.square(data) / (2 * rms**2)).sum(axis=0)
     return ln_Z0
 
-def cube_Z(shape, rms, data, peaks = [0, 1, 2, 3], origin = (0, 0),
-           header = None, writeto = None, **kwargs):
+
+def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
+           header=None, writeto=None, **kwargs):
     """
     Construct a fits HDU with ln(K) values for all xy positions in a
     cube of a given shape. Optionally, writes a fits file.
@@ -206,7 +218,7 @@ def cube_Z(shape, rms, data, peaks = [0, 1, 2, 3], origin = (0, 0),
         # TODO: implement this
         raise NotImplementedError("wip")
 
-    lnZs = np.empty(shape = (len(peaks),) + shape)
+    lnZs = np.empty(shape=(len(peaks), ) + shape)
     lnZs.fill(np.nan)
     err_lnZs = lnZs.copy()
 
@@ -219,12 +231,11 @@ def cube_Z(shape, rms, data, peaks = [0, 1, 2, 3], origin = (0, 0),
         #       i.e., if the median of evidence distributions
         #       differs by thousands, it is a strong hint that
         #       normalization differs for zero and non-zero models...
-        ln_Z0_arr = get_zero_evidence(data, rms, normalize = False)
+        ln_Z0_arr = get_zero_evidence(data, rms, normalize=False)
 
     for y, x in np.ndindex(shape):
         ln_Z0 = [ln_Z0_arr[y, x], np.nan] if 0 in peaks else None
-        Z_xy = lnZ_xy(x = x, y = y, peaks = peaks,
-                      lnZ0 = ln_Z0, **kwargs)
+        Z_xy = lnZ_xy(x=x, y=y, peaks=peaks, lnZ0=ln_Z0, **kwargs)
         for z_idx, (_, lnZ) in enumerate(zip(peaks, Z_xy)):
             lnZs[z_idx, y, x] = lnZ.n
             err_lnZs[z_idx, y, x] = lnZ.std_dev
@@ -242,20 +253,22 @@ def cube_Z(shape, rms, data, peaks = [0, 1, 2, 3], origin = (0, 0),
     hdu = fits.PrimaryHDU(np.vstack([lnZs, err_lnZs]), header)
 
     if writeto:
-        hdu.writeto(writeto, clobber = True)
+        hdu.writeto(writeto, clobber=True)
 
     return hdu
 
+
 def pars_xy(x, y, **kwargs):
-    a = analyzer_xy(x = x, y = y, **kwargs)
+    a = analyzer_xy(x=x, y=y, **kwargs)
     try:
         pars = a.get_best_fit()['parameters']
     except IOError:
         return np.nan
     return pars
 
-def parcube(shape, npeaks, npars, origin = (0, 0), header = None,
-            writeto = None, **kwargs):
+
+def parcube(shape, npeaks, npars, origin=(0, 0),
+            header=None, writeto=None, **kwargs):
     """
     Construct a fits HDU with best fit parameters at all xy
     positions for a cube of a given shape.
@@ -271,12 +284,12 @@ def parcube(shape, npeaks, npars, origin = (0, 0), header = None,
         # TODO: implement this
         raise NotImplementedError("wip")
 
-    parcube = np.empty(shape = (npars * npeaks,) + shape)
+    parcube = np.empty(shape=(npars * npeaks, ) + shape)
     parcube.fill(np.nan)
     errcube = parcube.copy()
 
     for y, x in np.ndindex(shape):
-        pars = pars_xy(x = x, y = y, npars = npars, npeaks = npeaks, **kwargs)
+        pars = pars_xy(x=x, y=y, npars=npars, npeaks=npeaks, **kwargs)
         parcube[:, y, x] = pars
         print(parcube[:, y, x])
         # FIXME: get the confidence intervals on pars as well
@@ -296,6 +309,6 @@ def parcube(shape, npeaks, npars, origin = (0, 0), header = None,
     #       can also put prior information along in a cube
 
     if writeto:
-        hdu.writeto(writeto, clobber = True)
+        hdu.writeto(writeto, clobber=True)
 
     return hdu

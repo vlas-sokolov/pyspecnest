@@ -3,6 +3,7 @@ from astropy import log
 from itertools import compress
 from collections import OrderedDict
 
+
 class Parameter:
     """
     This thingy here is ought to contain everything
@@ -10,8 +11,9 @@ class Parameter:
     convenience methods for getting prior multipliers
     used later as pymultinest feed.
     """
-    def __init__(self, name, nametex = None, prior = [0, 1],
-                 fixed = False, **kwargs):
+
+    def __init__(self, name, nametex=None, prior=[0, 1], fixed=False,
+                 **kwargs):
         self.name = name
         self.prior = prior
         if nametex:
@@ -22,9 +24,9 @@ class Parameter:
 
     def __repr__(self):
         return ("Parameter instance \"{}\", defined from {} to {}".format(
-                self.name, self.prior[0], self.prior[1]))
+            self.name, self.prior[0], self.prior[1]))
 
-    def freeze(self, value = None, **kwargs):
+    def freeze(self, value=None, **kwargs):
         """
         Fix the parameter so it won't get in a way of the
         multidimensional analysis about to unfold here.
@@ -50,7 +52,7 @@ class Parameter:
             self.prior = self.frozen_prior[:]
             delattr(self, 'frozen_prior')
 
-    def get_name(self, latex = False):
+    def get_name(self, latex=False):
         """
         Returns parameter name.
 
@@ -79,6 +81,7 @@ class ModelContainer(OrderedDict):
     """
     A collection of model methods and attributes.
     """
+
     def __init__(self, parlist, **kwargs):
         super(ModelContainer, self).__init__()
 
@@ -115,16 +118,15 @@ class ModelContainer(OrderedDict):
         """ Returns list of booleands indicating whether pars are frozen """
         return np.array([self[par].fixed for par in self])
 
-    def update_model(self, model = None, **kwargs):
+    def update_model(self, model=None, **kwargs):
         if model is not None: self.model = model
 
-    def update_data(self, xdata = None, ydata = None,
-                    std_noise = None, **kwargs):
+    def update_data(self, xdata=None, ydata=None, std_noise=None, **kwargs):
         if xdata is not None: self.xdata = xdata
         if ydata is not None: self.ydata = ydata
         if std_noise is not None: self.std_noise = std_noise
 
-    def nonfixed(self, attr_list, slack = False):
+    def nonfixed(self, attr_list, slack=False):
         """
         Given an iterable of (npars,) shape, reduces it to
         (dof,) shape by throwing out inices of frozen variables
@@ -134,13 +136,15 @@ class ModelContainer(OrderedDict):
 
         return list(compress(attr_list, ~self.fixed))
 
-    def get_nonfixed_slice(self, shape, axis = 0):
+    def get_nonfixed_slice(self, shape, axis=0):
         """ Returns a non-frozen slice for given shape and axis """
-        nf_slice = [slice(None, None, None) if i != axis else
-                    ~self.fixed for i in range(len(shape))]
+        nf_slice = [
+            slice(None, None, None) if i != axis else ~self.fixed
+            for i in range(len(shape))
+        ]
         return np.s_[nf_slice]
 
-    def get_names(self, latex = False, no_fixed = False):
+    def get_names(self, latex=False, no_fixed=False):
         """
         Returns a list of model parameter names.
 
@@ -150,8 +154,8 @@ class ModelContainer(OrderedDict):
 
         no_fixed : bool; omit frozen parameters, defaults to False
         """
-        return self.nonfixed([self[par].get_name(latex) for par in self],
-                             slack = not no_fixed)
+        return self.nonfixed(
+            [self[par].get_name(latex) for par in self], slack=not no_fixed)
 
     def prior_uniform(self, cube, ndim, nparams):
         """ Pass ModelContainer uniform priors to MultiNest """
@@ -168,7 +172,7 @@ class ModelContainer(OrderedDict):
         for i, par in enumerate(self):
             if (i == 10) or (i == 16):
                 # FIXME: this has to be generalised...
-                a, b = self[par].limited_lower_mods(cube[i-6])
+                a, b = self[par].limited_lower_mods(cube[i - 6])
             else:
                 a, b = self[par].get_uniform_mods()
             cube[i] = cube[i] * a + b
@@ -176,6 +180,6 @@ class ModelContainer(OrderedDict):
     def log_likelihood(self, cube, ndims, nparams):
         """ Returns -0.5 x chi^2 """
         par_list = [cube[i] for i in range(ndims)]
-        ymodel = self.model(pars = par_list)
+        ymodel = self.model(pars=par_list)
         log_L = (-0.5 * ((ymodel - self.ydata) / self.std_noise)**2).sum()
         return log_L
