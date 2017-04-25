@@ -1,4 +1,5 @@
 """ Functions that read in and analyze MultiNest chains """
+from __future__ import division
 import os
 import numpy as np
 import pymultinest
@@ -160,7 +161,7 @@ def cube_K(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
 
     # this -2 denotes the that the K array is a difference of Z array
     # layers. It's 2, and not 1, because there are error layers as well
-    zsize_K = Zs.shape[0] / 2 - 1
+    zsize_K = Zs.shape[0] // 2 - 1
     lnKs = np.empty(shape=(zsize_K, ) + shape)
     lnKs.fill(np.nan)
     err_lnKs = lnKs.copy()
