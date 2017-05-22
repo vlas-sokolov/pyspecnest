@@ -13,14 +13,15 @@ import subprocess
 import time
 import sys
 
-def get_log_file_fmatter(log_file=None, x=None, y=None, npeaks=None,
-                         prefix='g35-nh3_',
+def get_log_file_fmatter(log_file=None, prefix='g35-nh3_',
                          proj_dir = 'Projects/g35-vla-nh3/'):
     """ Backwards compatibility with g35-vla-nh3 repo. """
     if log_file is None:
         from go_home import home_dir
         log_dir = home_dir + proj_dir + 'nested-sampling/logs/'
-        log_file = log_dir + 'g35-nh3_x{}y{}-npeaks{}.log'.format(x, y, npeaks)
+        log_file_fmatter = log_dir + 'g35-nh3_x{}y{}-npeaks{}.log'
+
+    return log_file_fmatter
 
 def get_logger(x, y, npeaks, log_file_fmatter=None):
     """ One log file per pixel to avoid race condition """
@@ -103,10 +104,12 @@ def xy_sorted_by(method='Bfactor', **kwargs):
 
     return method_to_func[method](**kwargs)
 
-def perc(i, n_jobs, n_cpu):
-    jobs_per_cpu = n_jobs / n_cpu
-    p = (i % jobs_per_cpu) / jobs_per_cpu * 100
-    #p = i / n_jobs * 100
+def perc(i, n_jobs, n_cpu, split=False):
+    if split:
+        jobs_per_cpu = n_jobs / n_cpu
+        p = (i % jobs_per_cpu) / jobs_per_cpu * 100
+    else:
+        p = i / n_jobs * 100
     return "%{:.2f}".format(p)
 
 def get_tasks(n_cpu, npeaks=1, method='Bfactor', testing=False,
