@@ -53,11 +53,13 @@ def work(cmd):
                            stdout = stdout,
                            shell = False)
 
-def get_xy_sorted(arr, xy_indices, cut = None):
+def get_xy_sorted(arr, xy_indices=None, cut = None):
     """
     Sort xy indices by a value array.
     Adapted from pyspeckit's SpectralCube.py.
     """
+    if xy_indices is None:
+        xy_indices = np.indices(arr.shape)
     yy, xx = xy_indices
     arrsort = np.argsort((1 / (arr - np.nanmin(arr) + .1)).flat)
 
@@ -113,8 +115,9 @@ def perc(i, n_jobs, n_cpu, split=False):
     return "%{:.2f}".format(p)
 
 def get_tasks(n_cpu, npeaks=1, method='Bfactor', testing=False,
-              script="innocent_script.py", **kwargs):
-    xy_order = xy_sorted_by(method, **kwargs)
+              script="innocent_script.py", xy_order=None, **kwargs):
+    if xy_order is None:
+        xy_order = xy_sorted_by(method, **kwargs)
 
     prefix = 'echo ' if testing else ''
 
