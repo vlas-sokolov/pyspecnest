@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 class Parameter:
     """
-    This thingy here is ought to contain everything
+    This class framework is ought to contain everything
     related to individual parameters - priors, names, and
     convenience methods for getting prior multipliers
     used later as pymultinest feed.
@@ -96,7 +96,7 @@ class ModelContainer(OrderedDict):
         self.update_model(**kwargs)
         self.update_data(**kwargs)
 
-    # TODO: setting __repr___ would be nice...
+    # TODO: setting a __repr___ would be nice...
 
     @property
     def npars(self):
@@ -115,7 +115,7 @@ class ModelContainer(OrderedDict):
 
     @property
     def fixed(self):
-        """ Returns list of booleands indicating whether pars are frozen """
+        """ Returns list of booleans indicating whether pars are frozen """
         return np.array([self[par].fixed for par in self])
 
     def update_model(self, model=None, **kwargs):
@@ -129,7 +129,7 @@ class ModelContainer(OrderedDict):
     def nonfixed(self, attr_list, slack=False):
         """
         Given an iterable of (npars,) shape, reduces it to
-        (dof,) shape by throwing out inices of frozen variables
+        (dof,) shape by throwing out indices of frozen variables
         """
         if slack:
             return attr_list

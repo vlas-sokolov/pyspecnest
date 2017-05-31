@@ -98,7 +98,7 @@ def suffix_str(model, snr):
 
 
 def get_pymultinest_dir(output_dir, prefix, suffix, subdir='chains'):
-    """ Sets up and returns multinest outpud directory """
+    """ Sets up and returns multinest output directory """
     local_dir = '{}/{}_{}/'.format(subdir, prefix, suffix)
     pymultinest_output = os.path.join(output_dir, local_dir)
 
@@ -115,11 +115,11 @@ def synthetic_nh3_inference(sp=None, std_noise=None, npeaks=1,
                             priors=None, snr=3, snr_line='twotwo',
                             output_dir='', name_id='nh3'):
     """
-    A function contatining an example script.
-    * Generates synthetic ammnia invesion lines
+    A function containing an example script.
+    * Generates synthetic ammonia inversion lines
     * Runs PyMultiNest
     * Fits ammonia lines with pyspeckit
-    * Plots possible models alonside with minimal-chi^2 fit
+    * Plots possible models alongside with minimal-chi^2 fit
     * Plots the global posterior parameter distribution
 
     Parameters
