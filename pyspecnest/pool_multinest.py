@@ -121,8 +121,8 @@ def get_tasks(n_cpu, npeaks=1, method='Bfactor', testing=False,
 
     prefix = 'echo ' if testing else ''
 
-    cmd_string = ("{}python3 {} {} ".format(prefix, script, npeaks)
-                  + "{} {} 0 {}")
+    cmd_string = ("{}python{} {} {} ".format(prefix, sys.version_info.major,
+                                             script, npeaks) + "{} {} 0 {}")
     n_jobs = len(xy_order)
     tasks = [cmd_string.format(y, x, perc(i, n_jobs, n_cpu))
              for i, (x, y) in enumerate(xy_order)]
