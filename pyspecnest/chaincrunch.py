@@ -197,17 +197,19 @@ def cube_K(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
 
 
 def get_zero_evidence(data, rms, normalize=True):
-    if normalize:
+    if normalize and len(data.shape) < 3:
         norm_C = -data.shape[0] * np.log(np.sqrt(2 * np.pi) * rms)
-    else:
+    elif len(data.shape) < 3:
         norm_C = 0
+    else:
+        raise NotImplementedError
 
     ln_Z0 = norm_C - (np.square(data) / (2 * rms**2)).sum(axis=0)
     return ln_Z0
 
 
-def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
-           header=None, writeto=None, normalize=False, **kwargs):
+def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0), header=None,
+           writeto=None, normalize=False, ln_Z0_arr=None, **kwargs):
     """
     Construct a fits HDU with ln(K) values for all xy positions in a
     cube of a given shape. Optionally, writes a fits file.
@@ -223,7 +225,7 @@ def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
     lnZs.fill(np.nan)
     err_lnZs = lnZs.copy()
 
-    if 0 in peaks:
+    if 0 in peaks and ln_Z0_arr is None:
         # NOTE: no normalization would in this case would imply
         #       that not a full likelihood function passed to
         #       the MultiNest was of the `chisq / 2` form and not
@@ -232,6 +234,10 @@ def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
         #       i.e., if the median of evidence distributions
         #       differs by thousands, it is a strong hint that
         #       normalization differs for zero and non-zero models...
+        # NOTE: this only works for the uniform noise case!
+        #       if you're in a situation where you've constructed your
+        #       joint likelihood function and wonder where to plug it in,
+        #       pass a custom ln_Z0 array in the kwargs!
         ln_Z0_arr = get_zero_evidence(data, rms, normalize=normalize)
 
     for y, x in np.ndindex(shape):
