@@ -207,7 +207,7 @@ def get_zero_evidence(data, rms, normalize=True):
 
 
 def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
-           header=None, writeto=None, **kwargs):
+           header=None, writeto=None, normalize=False, **kwargs):
     """
     Construct a fits HDU with ln(K) values for all xy positions in a
     cube of a given shape. Optionally, writes a fits file.
@@ -232,7 +232,7 @@ def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
         #       i.e., if the median of evidence distributions
         #       differs by thousands, it is a strong hint that
         #       normalization differs for zero and non-zero models...
-        ln_Z0_arr = get_zero_evidence(data, rms, normalize=False)
+        ln_Z0_arr = get_zero_evidence(data, rms, normalize=normalize)
 
     for y, x in np.ndindex(shape):
         ln_Z0 = [ln_Z0_arr[y, x], np.nan] if 0 in peaks else None
