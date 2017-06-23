@@ -199,7 +199,7 @@ def cube_K(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
 def get_zero_evidence(data, rms, normalize=True):
     if normalize and len(data.shape) < 3:
         norm_C = -data.shape[0] * np.log(np.sqrt(2 * np.pi) * rms)
-    elif len(data.shape) < 3:
+    elif not normalize:
         norm_C = 0
     else:
         raise NotImplementedError
