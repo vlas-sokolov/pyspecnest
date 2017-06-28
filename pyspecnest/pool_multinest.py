@@ -14,11 +14,11 @@ import time
 import sys
 
 def get_log_file_fmatter(log_file=None, prefix='g35-nh3_',
-                         proj_dir = 'Projects/g35-vla-nh3/'):
+                         proj_dir = '~/Projects/g35-vla-nh3/'):
     """ Backwards compatibility with g35-vla-nh3 repo. """
     if log_file is None:
-        from go_home import home_dir
-        log_dir = home_dir + proj_dir + 'nested-sampling/logs/'
+        from os.path import expanduser
+        log_dir = expanduser(proj_dir + 'nested-sampling/logs/')
         log_file_fmatter = log_dir + 'g35-nh3_x{}y{}-npeaks{}.log'
 
     return log_file_fmatter
