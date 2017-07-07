@@ -10,6 +10,23 @@ from astropy import log
 
 # TODO: goal #2 is writing output fits files with MAP/MLE parameters
 
+def _tinker_header(h, ctype3='', bunit=''):
+    """
+    Convert a 3d header to accommodate utility-storing data.
+    """
+    # FIXME this breaks if header is None!
+    # adapt dummy header to the task at hand
+    for key in h.keys():
+        if key.startswith('PLANE'):
+            h.pop(key, None)
+    h['CTYPE3'] = ctype3
+    h['BUNIT'] = bunit
+    h['CDELT3'] = 1
+    h['CRVAL3'] = 1
+    h['CRPIX3'] = 1
+
+    return h
+
 
 def analyzer_xy(x, y, npeaks, output_dir, name_id='g35-nh3', npars=6):
     suffix = 'x{}y{}'.format(x, y)
@@ -174,13 +191,7 @@ def cube_K(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
         lnKs[i - 1] = unumpy.nominal_values(K_ij)
         err_lnKs[i - 1] = unumpy.std_devs(K_ij)
 
-    # FIXME this breaks if header is None!
-    # adapt dummy header to the task at hand
-    for key in header.keys():
-        if key.startswith('PLANE'):
-            header.pop(key, None)
-    header['CTYPE3'] = 'BAYES FACTORS'
-    header['BUNIT'] = 'ln(Ki/j)'
+    header = _tinker_header(header, ctype3='BAYES FACTORS', bunit='ln(Zi/Zj)')
 
     hdu = fits.PrimaryHDU(np.vstack([lnKs, err_lnKs]), header)
     for i in np.arange(zsize_K) + 1:
@@ -247,13 +258,9 @@ def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0), header=None,
             lnZs[z_idx, y, x] = lnZ.n
             err_lnZs[z_idx, y, x] = lnZ.std_dev
 
-    # FIXME this breaks if header is None!
-    # adapt dummy header to the task at hand
-    for key in header.keys():
-        if key.startswith('PLANE'):
-            header.pop(key, None)
-    header['CTYPE3'] = 'BAYESIAN EVIDENCE'
-    header['BUNIT'] = 'ln(Z_npeaks)'
+    header = _tinker_header(header, ctype3='BAYESIAN EVIDENCE',
+                            bunit='ln(Z_npeaks)')
+
     for p in peaks:
         header['PLANE{}'.format(p + 1)] = p
 
@@ -302,12 +309,8 @@ def parcube(shape, npeaks, npars, origin=(0, 0),
         # FIXME: get the confidence intervals on pars as well
         errcube[:, y, x] = np.nan
 
-    # adapt dummy header to the task at hand
-    for key in header.keys():
-        if key.startswith('PLANE'):
-            header.pop(key, None)
-    header['CTYPE3'] = 'BEST FIT PARAMETERS'
-    header['BUNIT'] = 'VARIOUS'
+    header = _tinker_header(header, ctype3='BEST FIT PARAMETERS',
+                            bunit='VARIOUS')
 
     hdu = fits.PrimaryHDU(np.vstack([parcube, errcube]), header)
 
