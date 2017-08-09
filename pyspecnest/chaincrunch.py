@@ -9,21 +9,29 @@ from astropy.io import fits
 from astropy import log
 
 # TODO: goal #2 is writing output fits files with MAP/MLE parameters
+# TODO: write up another funciton that makes npeaks map, but this time
+#       by imposing strict Bayes factor cuts.
 
-def _tinker_header(h, ctype3='', bunit=''):
+def _tinker_header(h, ctype3='', bunit='', flatten=False):
     """
     Convert a 3d header to accommodate utility-storing data.
     """
     # FIXME this breaks if header is None!
     # adapt dummy header to the task at hand
-    for key in h.keys():
-        if key.startswith('PLANE'):
-            h.pop(key, None)
     h['CTYPE3'] = ctype3
     h['BUNIT'] = bunit
     h['CDELT3'] = 1
     h['CRVAL3'] = 1
     h['CRPIX3'] = 1
+
+    if flatten:
+        h['NAXIS'] = 2
+
+    for key in h.keys():
+        if key.startswith('PLANE'):
+            h.pop(key, None)
+        if flatten and key.endswith('3'):
+            h.pop(key, None)
 
     return h
 
@@ -322,3 +330,24 @@ def parcube(shape, npeaks, npars, origin=(0, 0),
         hdu.writeto(writeto, clobber=True)
 
     return hdu
+
+
+def bayesian_npeaks_averaging(zarr, npeaks, header=None, writeto=None):
+    """
+    Calculates an image of number of components per pixel via a simplified
+    version of Bayesian averaging. Basically, a number of components weighted
+    by the Bayesian evidence.
+    """
+    # because zarr is actually ln(P(M | D)), remember?
+    pzarr = np.exp(zarr)
+    npeaks = (pzarr[:npeaks + 1] * np.arange(npeaks + 1)[:, None, None]).sum(
+        axis=0) / pzarr[:npeaks + 1].sum(axis=0)
+    return npeaks
+
+    if writeto:
+        if header:
+            header = _tinker_header(header, bunit='', flatten=True)
+        hdu = fits.PrimaryHDU(npeaks, header)
+        hdu.writeto(writeto, clobber=True)
+
+    return npeaks
