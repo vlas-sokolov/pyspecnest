@@ -332,7 +332,7 @@ def parcube(shape, npeaks, npars, origin=(0, 0),
     return hdu
 
 
-def bayesian_npeaks_averaging(zarr, npeaks, header=None, writeto=None):
+def bayesian_npeaks_averaging(zarr, npeaks_max, header=None, writeto=None):
     """
     Calculates an image of number of components per pixel via a simplified
     version of Bayesian averaging. Basically, a number of components weighted
@@ -342,16 +342,32 @@ def bayesian_npeaks_averaging(zarr, npeaks, header=None, writeto=None):
     # so in cases of "extreme" detection with very high S/N this might overflow
     # ... so for now let's raise overflow errors
     with np.errstate(divide='raise', over='raise', invalid='raise'):
-        # because zarr is actually ln(P(M | D)), remember?
-        pzarr = np.exp(zarr)
-        npeaks = (pzarr[:npeaks + 1]
-                  * np.arange(npeaks + 1)[:, None, None]).sum(
-                  axis=0) / pzarr[:npeaks + 1].sum(axis=0)
+        try:
+            # because zarr is actually ln(P(M | D)), remember?
+            pzarr = np.exp(zarr)
+            npeaks_map = (pzarr[:npeaks_max + 1]
+                          * np.arange(npeaks_max + 1)[:, None, None]).sum(
+                          axis=0) / pzarr[:npeaks_max + 1].sum(axis=0)
+        except FloatingPointError:
+            log.warn("Exponential overflow detected. Will loop over pixels"
+                     " using the `bigfloat` package framework instead for"
+                     " arbitrary precision. It's slower and bigfloat package"
+                     " is required.")
+            import bigfloat
+            npeaks_map = np.full_like(zarr[0], np.nan)
+            for (y, x) in np.ndindex(zarr[0].shape):
+                lnZs_xy = zarr[:npeaks_max + 1, y, x]
+                numerator = np.sum([i * bigfloat.exp(lnZ)
+                                    for (i, lnZ) in enumerate(lnZs_xy)])
+                denumerator = np.sum([bigfloat.exp(lnZ)
+                                      for lnZ in lnZs_xy])
+
+                npeaks_map[y, x] = np.float64(numerator / denumerator)
 
     if writeto:
         if header:
             header = _tinker_header(header, bunit='', flatten=True)
-        hdu = fits.PrimaryHDU(npeaks, header)
+        hdu = fits.PrimaryHDU(npeaks_map, header)
         hdu.writeto(writeto, clobber=True)
 
-    return npeaks
+    return npeaks_map
