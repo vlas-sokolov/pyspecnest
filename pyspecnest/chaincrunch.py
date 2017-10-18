@@ -338,11 +338,15 @@ def bayesian_npeaks_averaging(zarr, npeaks, header=None, writeto=None):
     version of Bayesian averaging. Basically, a number of components weighted
     by the Bayesian evidence.
     """
-    # because zarr is actually ln(P(M | D)), remember?
-    pzarr = np.exp(zarr)
-    npeaks = (pzarr[:npeaks + 1] * np.arange(npeaks + 1)[:, None, None]).sum(
-        axis=0) / pzarr[:npeaks + 1].sum(axis=0)
-    return npeaks
+    # we are computing intermediate values of bayesian evidence from its log,
+    # so in cases of "extreme" detection with very high S/N this might overflow
+    # ... so for now let's raise overflow errors
+    with np.errstate(divide='raise', over='raise', invalid='raise'):
+        # because zarr is actually ln(P(M | D)), remember?
+        pzarr = np.exp(zarr)
+        npeaks = (pzarr[:npeaks + 1]
+                  * np.arange(npeaks + 1)[:, None, None]).sum(
+                  axis=0) / pzarr[:npeaks + 1].sum(axis=0)
 
     if writeto:
         if header:
