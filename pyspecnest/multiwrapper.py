@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 from astropy import log
 from itertools import compress
@@ -183,3 +184,23 @@ class ModelContainer(OrderedDict):
         ymodel = self.model(pars=par_list)
         log_L = (-0.5 * ((ymodel - self.ydata) / self.std_noise)**2).sum()
         return log_L
+
+    def get_xoff_transform(self, npeaks=None):
+        """
+        Returns a transformation matrix between two sets of velocity
+        coordinates.
+
+        Transforms (v1, v2, v3, ..., vn) into (vmean, dv1, dv2, ... dvn-1).
+        """
+        if npeaks is None:
+            npeaks = self.npeaks
+
+        T = np.zeros(shape=(npeaks, npeaks))
+        # matrix row for mean veolocity calculation
+        T[0, :] = 1/npeaks
+        # fill the rows for velocity intervals
+        for i in range(1, npeaks):
+            T[i, i-1] = -1
+            T[i, i] = 1
+
+        return T
