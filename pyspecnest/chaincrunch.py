@@ -141,6 +141,48 @@ def get_global_evidence(a):
     return stats
 
 
+def get_stats_fast(a, stat=''):
+    """
+    PyMultiNest's `get_best_fit` method reads the whole posterior in the
+    memory, which could be very slow if we have to read ~10k posteriors in
+    one go just to get the best fit statistics - easier to parse the stats
+    file already generated with MultiNest.
+
+    Parameters
+    ----------
+    a : PyMultiNest Analyzer class instance
+
+    stat : str, one of the ['mean', 'mle', 'map'] - a statistic to read out
+
+    Returns
+    -------
+    stat : ndims-shaped array for MLE or MAP, ndims x 2 shape for mean
+           statistics (for mean and sigma values)
+    """
+    trigger = {'mean': 'Mean',
+               'mle': 'Maximum Likelihood',
+               'map': 'MAP Parameters'}
+    sweet_spot = False
+
+    stat_result = []
+
+    stats_file = open(a.stats_file)
+    for l in stats_file.readlines():
+        if trigger[stat] in l:
+            sweet_spot = True
+            continue
+        if sweet_spot:
+            if l.startswith('Dim No.'):
+                continue
+            line_arr = np.fromstring(l.strip(), sep=' ')
+            if line_arr.size == 0:
+                sweet_spot = False
+            else:
+                stat_result.append(line_arr)
+
+    return np.squeeze(np.array(stat_result)[:, 1:].T)
+
+
 def get_stats(a, mode="slow"):
     if mode == "slow":
         return a.get_stats()
@@ -280,10 +322,15 @@ def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0), header=None,
     return hdu
 
 
-def pars_xy(x, y, **kwargs):
+def pars_xy(x, y, mode='fast', stat='mle', **kwargs):
     a = analyzer_xy(x=x, y=y, **kwargs)
     try:
-        pars = a.get_best_fit()['parameters']
+        if mode == 'slow':
+            pars = a.get_best_fit()['parameters']
+        elif mode == "fast":
+            pars = get_stats_fast(a, stat=stat)
+        else:
+            raise ValueError("mode should be one of the ['slow', 'fast']")
     except IOError:
         return np.nan
     return pars
