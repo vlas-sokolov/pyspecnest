@@ -78,6 +78,53 @@ class Parameter:
         return mod - self.prior[0], self.prior[0]
 
 
+def get_xoff_transform(npeaks):
+    """
+    Returns a transformation matrix between two sets of line centroid
+    coordinates.
+
+    Transforms (x1, x2, x3, ..., xn) into (xmean, dx1, dx2, ... dxn-1).
+    """
+    T = np.zeros(shape=(npeaks, npeaks))
+    # matrix row for mean line centroid calculation
+    T[0, :] = 1 / npeaks
+    # fill the rows for the centroid intervals
+    for i in range(1, npeaks):
+        T[i, i - 1] = -1
+        T[i, i] = 1
+
+    return T
+
+
+def xoff_transform(f_loglike):
+    """
+    Hijack a `cube`-based method and inject a custom set of transformed
+    parameters into it. The coordinate transform is pre-computed by the
+    the inverse matrix from the `get_xoff_transform` method.
+    """
+    def log_like_transformed(*args, **kwargs):
+        # I know I know this can be write in a simpler way, but we want
+        # to really avoid making new arrays in memory and I am not sure
+        # what type the `cube` variable is inside PyMultinest
+        cube = args[1]
+        trans_xoff_vector = [cube[i] for i, is_xoff in
+                             enumerate(kwargs["xoff_pars"]) if is_xoff]
+
+        xoff_vector = np.dot(kwargs["inv_xoff_T"], trans_xoff_vector)
+
+        # inject xoffs into cube
+        xoff_idx = 0
+        for i, is_xoff in enumerate(kwargs["xoff_pars"]):
+            if is_xoff:
+                cube[i] = xoff_vector[xoff_idx]
+                xoff_idx += 1
+
+        # compute the log-likelihood in the (x1, x2, x3, ..., xn) system
+        f_loglike(*args)
+
+    return log_like_transformed
+
+
 class ModelContainer(OrderedDict):
     """
     A collection of model methods and attributes.
@@ -93,9 +140,17 @@ class ModelContainer(OrderedDict):
 
         self.std_noise = kwargs.pop('std_noise', None)
         self.npeaks = kwargs.pop('npeaks', 1)
+        self.xoff_key = kwargs.pop('xoff_key', 'xoff_')
 
         self.update_model(**kwargs)
         self.update_data(**kwargs)
+
+        # generate the coordinate transformation matrices
+        T = get_xoff_transform(self.npeaks)
+        # (x1, x2, x2, ..., xn) --> (xmean, dx1, dx2, ... dxn-1)
+        self.xoff_T = T
+        # (xmean, dx1, dx2, ... dxn-1) --> (x1, x2, x2, ..., xn)
+        self.inv_xoff_T = np.linalg.inv(T)
 
     # TODO: setting a __repr___ would be nice...
 
@@ -185,22 +240,23 @@ class ModelContainer(OrderedDict):
         log_L = (-0.5 * ((ymodel - self.ydata) / self.std_noise)**2).sum()
         return log_L
 
-    def get_xoff_transform(self, npeaks=None):
+    @property
+    def xoff_pars(self, key=None):
         """
-        Returns a transformation matrix between two sets of velocity
-        coordinates.
+        Returns a boolean array signaling if a parameter in `cube` is in xoff
 
-        Transforms (v1, v2, v3, ..., vn) into (vmean, dv1, dv2, ... dvn-1).
+        Needed for conversion between parameter name space and the free-styled
+        indexing in the input format of multinest.
         """
-        if npeaks is None:
-            npeaks = self.npeaks
+        if key is None:
+            key = self.xoff_key
 
-        T = np.zeros(shape=(npeaks, npeaks))
-        # matrix row for mean veolocity calculation
-        T[0, :] = 1/npeaks
-        # fill the rows for velocity intervals
-        for i in range(1, npeaks):
-            T[i, i-1] = -1
-            T[i, i] = 1
+        return [key in parname for parname in self]
 
-        return T
+    @xoff_transform
+    def xoff_symmetric_log_likelihood(self, cube, ndims, nparams):
+        return self.log_likelihood(self, cube, ndims, nparams)
+
+    #@xoff_transform
+    #def xoff_symmetric_prior_uniform(self, cube, ndim, nparams):
+    #    pass
