@@ -3,6 +3,7 @@ import numpy as np
 from astropy import log
 from itertools import compress
 from collections import OrderedDict
+import functools
 
 
 class Parameter:
@@ -102,25 +103,27 @@ def xoff_transform(f_loglike):
     parameters into it. The coordinate transform is pre-computed by the
     the inverse matrix from the `get_xoff_transform` method.
     """
+    @functools.wraps(f_loglike) # preserves __name__, docstring
     def log_like_transformed(*args, **kwargs):
         # I know I know this can be write in a simpler way, but we want
         # to really avoid making new arrays in memory and I am not sure
         # what type the `cube` variable is inside PyMultinest
+        spec_model = args[0]
         cube = args[1]
         trans_xoff_vector = [cube[i] for i, is_xoff in
-                             enumerate(kwargs["xoff_pars"]) if is_xoff]
+                             enumerate(spec_model.xoff_pars) if is_xoff]
 
-        xoff_vector = np.dot(kwargs["inv_xoff_T"], trans_xoff_vector)
+        xoff_vector = np.dot(spec_model.inv_xoff_T, trans_xoff_vector)
 
         # inject xoffs into cube
         xoff_idx = 0
-        for i, is_xoff in enumerate(kwargs["xoff_pars"]):
+        for i, is_xoff in enumerate(spec_model.xoff_pars):
             if is_xoff:
                 cube[i] = xoff_vector[xoff_idx]
                 xoff_idx += 1
 
         # compute the log-likelihood in the (x1, x2, x3, ..., xn) system
-        f_loglike(*args)
+        return f_loglike(*args)
 
     return log_like_transformed
 
@@ -238,6 +241,7 @@ class ModelContainer(OrderedDict):
         par_list = [cube[i] for i in range(ndims)]
         ymodel = self.model(pars=par_list)
         log_L = (-0.5 * ((ymodel - self.ydata) / self.std_noise)**2).sum()
+
         return log_L
 
     @property
@@ -255,7 +259,7 @@ class ModelContainer(OrderedDict):
 
     @xoff_transform
     def xoff_symmetric_log_likelihood(self, cube, ndims, nparams):
-        return self.log_likelihood(self, cube, ndims, nparams)
+        return self.log_likelihood(cube, ndims, nparams)
 
     #@xoff_transform
     #def xoff_symmetric_prior_uniform(self, cube, ndim, nparams):
