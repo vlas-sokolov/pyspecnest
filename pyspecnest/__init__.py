@@ -6,3 +6,4 @@ from . import n2hp
 from . import n2dp
 from . import chaincrunch
 from . import pool_multinest
+from . import tests
