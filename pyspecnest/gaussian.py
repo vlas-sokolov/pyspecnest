@@ -2,7 +2,7 @@
 from .multiwrapper import Parameter, ModelContainer
 
 
-def get_gauss_model(sp, std_noise, priors=None, npeaks=1):
+def get_gauss_model(sp, std_noise, priors=None, npeaks=1, **kwargs):
     # initializing the model parameters
     if priors is None:
         # set up dummy priors for an example run
@@ -26,6 +26,8 @@ def get_gauss_model(sp, std_noise, priors=None, npeaks=1):
         model=sp.specfit.get_full_model,
         std_noise=std_noise,
         xdata=sp.xarr.value,
-        ydata=sp.data)
+        ydata=sp.data,
+        npeaks=npeaks,
+        **kwargs)
 
     return gauss_model
