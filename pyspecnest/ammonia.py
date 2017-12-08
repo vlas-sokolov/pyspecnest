@@ -18,7 +18,7 @@ from .multiwrapper import Parameter, ModelContainer
 from .model_nh3 import nh3_spectrum
 
 
-def get_nh3_model(sp, lines, std_noise, priors=None, npeaks=1):
+def get_nh3_model(sp, lines, std_noise, priors=None, npeaks=1, **kwargs):
     # initializing the model parameters
     if priors is None:
         # set up dummy priors for an example run
@@ -49,7 +49,9 @@ def get_nh3_model(sp, lines, std_noise, priors=None, npeaks=1):
         model=sp.specfit.get_full_model,
         std_noise=std_noise,
         xdata=sp.xarr.value,
-        ydata=sp.data)
+        ydata=sp.data,
+        npeaks=npeaks,
+        **kwargs)
 
     return nh3_model
 
