@@ -18,5 +18,5 @@ setup(
     license = "MIT",
     url = "https://github.com/vlas-sokolov/pyspecnest",
 
-    packages = ["pyspecnest"],
+    packages = ["pyspecnest", "pyspecnest.tests"],
 )
