@@ -30,13 +30,19 @@ def get_nh3_model(sp, lines, std_noise, priors=None, npeaks=1, **kwargs):
 
     parlist = []
     for i in range(npeaks):
-        tkin = Parameter("tkin_%i" % i, r'$\mathrm{T_{kin}}$', priors.pop())
-        tex = Parameter("tex_%i" % i, r'$\mathrm{T_{ex}}$',
-                        priors.pop())  # makes no sense setting tex > tkin
-        ntot = Parameter("ntot_%i" % i, r'$\mathrm{N_{tot}}$', priors.pop())
-        sig = Parameter("sig_%i" % i, r'$\sigma$', priors.pop())
-        xoff = Parameter("xoff_%i" % i, r'$\mathrm{x_{off}}$', priors.pop())
-        o2p = Parameter("o2p_%i" % i, r'$\frac{ortho-NH_3}{para-NH_3}$',
+        tkin = Parameter("tkin_{}".format(i),
+                         r'$\mathrm{{T_{{kin{}}}}}$'.format(i), priors.pop())
+        tex = Parameter("tex_{}".format(i),
+                        r'$\mathrm{{T_{{ex{}}}}}$'.format(i),
+                        priors.pop()) # makes no sense setting tex > tkin
+        ntot = Parameter("ntot_{}".format(i),
+                         r'$\mathrm{{N_{{tot{}}}}}$'.format(i), priors.pop())
+        sig = Parameter("sig_{}".format(i), r'$\sigma_{}$'.format(i),
+                        priors.pop())
+        xoff = Parameter("xoff_{}".format(i),
+                         r'$\mathrm{{x_{{off{}}}}}$'.format(i), priors.pop())
+        o2p = Parameter("o2p_{}".format(i),
+                        r'$\frac{{ortho-NH_3}}{{para-NH_3}}_{}$'.format(i),
                         priors.pop())
 
         if 'twotwo' not in lines: tkin.freeze(10)

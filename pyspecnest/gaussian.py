@@ -15,9 +15,12 @@ def get_gauss_model(sp, std_noise, priors=None, npeaks=1, **kwargs):
 
     parlist = []
     for i in range(npeaks):
-        amp = Parameter("amp_%i" % i, r'$\mathrm{A}$', priors.pop())
-        xoff = Parameter("xoff_%i" % i, r'$\mathrm{x_{off}}$', priors.pop())
-        sig = Parameter("sig_%i" % i, r'$\sigma$', priors.pop())
+        amp = Parameter("amp_{}".format(i), r'$\mathrm{{A_{}}}$'.format(i),
+                        priors.pop())
+        xoff = Parameter("xoff_{}".format(i),
+                         r'$\mathrm{{x_{{off{}}}}}$'.format(i), priors.pop())
+        sig = Parameter("sig_{}".format(i), r'$\sigma_{}$'.format(i),
+                        priors.pop())
 
         parlist += [amp, xoff, sig]
 

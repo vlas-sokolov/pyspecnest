@@ -14,10 +14,14 @@ def get_n2hp_model(sp, std_noise, priors=None, npeaks=1, **kwargs):
 
     parlist = []
     for i in range(npeaks):
-        tex = Parameter("tex_%i" % i, r'$\mathrm{T_{ex}}$', priors.pop())
-        tau = Parameter("tau_%i" % i, r'$\mathrm{\tau}$', priors.pop())
-        xoff = Parameter("xoff_%i" % i, r'$\mathrm{x_{off}}$', priors.pop())
-        sig = Parameter("sig_%i" % i, r'$\sigma$', priors.pop())
+        tex = Parameter("tex_{}".format(i),
+                        r'$\mathrm{{T_{{ex{}}}}}$'.format(i), priors.pop())
+        tau = Parameter("tau_{}".format(i), r'$\mathrm{{\tau_{}}}$'.format(i),
+                        priors.pop())
+        xoff = Parameter("xoff_{}".format(i),
+                         r'$\mathrm{{x_{{off{}}}}}$'.format(i), priors.pop())
+        sig = Parameter("sig_{}".format(i), r'$\sigma_{}$'.format(i),
+                        priors.pop())
 
         parlist += [tex, tau, xoff, sig]
 
