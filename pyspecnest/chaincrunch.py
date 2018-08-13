@@ -9,7 +9,7 @@ from astropy.io import fits
 from astropy import log
 
 # TODO: goal #2 is writing output fits files with MAP/MLE parameters
-# TODO: write up another funciton that makes npeaks map, but this time
+# TODO: write up another function that makes npeaks map, but this time
 #       by imposing strict Bayes factor cuts.
 
 def _tinker_header(h, ctype3='', bunit='', flatten=False):
@@ -252,7 +252,7 @@ def cube_K(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0),
         hdu.header['PLANE{}'.format(i)] = head_key
 
     if writeto:
-        hdu.writeto(writeto, clobber=True)
+        hdu.writeto(writeto, overwrite=True)
 
     return hdu
 
@@ -317,7 +317,7 @@ def cube_Z(shape, rms, data, peaks=[0, 1, 2, 3], origin=(0, 0), header=None,
     hdu = fits.PrimaryHDU(np.vstack([lnZs, err_lnZs]), header)
 
     if writeto:
-        hdu.writeto(writeto, clobber=True)
+        hdu.writeto(writeto, overwrite=True)
 
     return hdu
 
@@ -374,7 +374,7 @@ def parcube(shape, npeaks, npars, origin=(0, 0),
     #       can also put prior information along in a cube
 
     if writeto:
-        hdu.writeto(writeto, clobber=True)
+        hdu.writeto(writeto, overwrite=True)
 
     return hdu
 
@@ -439,6 +439,6 @@ def bayesian_npeaks_averaging(zarr, npeaks_max, header=None, writeto=None,
         if header:
             header = _tinker_header(header, bunit='', flatten=True)
         hdu = fits.PrimaryHDU(npeaks_map, header)
-        hdu.writeto(writeto, clobber=True)
+        hdu.writeto(writeto, overwrite=True)
 
     return npeaks_map
