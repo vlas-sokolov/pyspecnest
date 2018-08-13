@@ -379,22 +379,46 @@ def parcube(shape, npeaks, npars, origin=(0, 0),
     return hdu
 
 
-def bayesian_npeaks_averaging(zarr, npeaks_max, header=None, writeto=None):
+def bayesian_npeaks_averaging(zarr, npeaks_max, header=None, writeto=None,
+                              force_float128=True):
     """
     Calculates an image of number of components per pixel via a simplified
     version of Bayesian averaging. Basically, a number of components weighted
     by the Bayesian evidence.
+
+    Parameters
+    ----------
+    zarr : an np.ndarray of log(Z) images
+
+    npeaks : int; how many multicomponent models to average on
+
+    header : if saving to a file, the header to use for FITS image
+
+    writeto : output FITS file (optional)
+
+    force_float128 : bool; whether to force intermediate arrays to float128
+
+    Returns
+    -------
+    stat : ndims-shaped array for MLE or MAP, ndims x 2 shape for mean
+           statistics (for mean and sigma values)
+
     """
+    dtype = np.float128 if force_float128 else zarr.dtype
+
     # we are computing intermediate values of bayesian evidence from its log,
     # so in cases of "extreme" detection with very high S/N this might overflow
     # ... so for now let's raise overflow errors
     with np.errstate(divide='raise', over='raise', invalid='raise'):
         try:
             # because zarr is actually ln(P(M | D)), remember?
-            pzarr = np.exp(zarr)
+            pzarr = np.exp(zarr, dtype=dtype)
             npeaks_map = (pzarr[:npeaks_max + 1]
                           * np.arange(npeaks_max + 1)[:, None, None]).sum(
                           axis=0) / pzarr[:npeaks_max + 1].sum(axis=0)
+            # why change it back? some libraries aren't very friendly to
+            # float128 types, e.g. matplotlib's imshow doesn't plot them
+            npeaks_map = npeaks_map.astype(zarr.dtype)
         except FloatingPointError:
             log.warn("Exponential overflow detected. Will loop over pixels"
                      " using the `bigfloat` package framework instead for"
