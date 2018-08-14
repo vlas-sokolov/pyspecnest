@@ -3,6 +3,7 @@ from __future__ import division
 import os
 import numpy as np
 import pymultinest
+import functools
 from uncertainties import ufloat, unumpy
 from itertools import combinations
 from astropy.io import fits
@@ -36,7 +37,102 @@ def _tinker_header(h, ctype3='', bunit='', flatten=False):
     return h
 
 
+# If MultiNest truncates the path+filenames beyond this, the files are lost!
+_multikeys_unique = {'e': 'ev.dat',
+                     'IS.i': 'IS.iterinfo',
+                     'IS.po':'IS.points',
+                     'IS.pt':'IS.ptprob',
+                     'l': 'live.points',
+                     'ph': 'phys_live.points',
+                     'po': 'post_equal_weights.dat',
+                     'r': 'resume.dat',
+                     'su': 'summary.txt',
+                     'st': 'stats.dat',
+                     '.': '.txt'}
+
+_multikeys_shortest = {'ev.dat':'e',
+                       'IS.iterinfo':'IS.i',
+                       'IS.points':'IS.po',
+                       'IS.ptprob':'IS.pt',
+                       'live.points':'l',
+                       'phys_live.points':'ph',
+                       'post_equal_weights.dat':'po',
+                       'resume.dat':'r',
+                       'summary.txt':'su',
+                       'stats.dat':'st',
+                       '.txt':'.'}
+
+
+def fix_multimess(path):
+    """
+    MultiNest truncates full filenames to data files to a 100 characters.
+
+    https://ccpforge.cse.rl.ac.uk/gf/project/multinest/tracker/ \
+    ?action=TrackerItemEdit&tracker_item_id=1732
+    """
+    flst = os.listdir(path)
+
+    for f in flst:
+        for fshort, flong in _multikeys_unique.items():
+            if f[2:].startswith(fshort) and flong not in f:
+                srcfile = os.path.join(path, f)
+                dstfile = os.path.join(path, f[:2]+flong)
+                os.rename(srcfile, dstfile)
+
+
+def fix_truncated(analyzer_initter):
+    """
+    Due to a suspected case of Jurassic programming the MultiNest file
+    names (with path!) are truncated to 100 characters.
+
+    Line 28 in posterior.F90 reads: character(LEN=100)root
+
+    So, the best clutch is to check if truncated files can be read still as
+    the Analyzer instance is being initialized and to modify its file names
+    in place.
+    """
+    @functools.wraps(analyzer_initter) # preserves __name__, docstring
+    def analyzer_filenames_restored(*args, **kwargs):
+        a = analyzer_initter(*args, **kwargs)
+
+        for file_attr, key in zip(
+                ['stats_file', 'data_file', 'equal_weighted_file'],
+                ['stats.dat', '.txt', 'post_equal_weights.dat']):
+            fname = a.__getattribute__(file_attr)
+            if not os.path.exists(fname):
+                dirname = os.path.dirname(fname)
+                prefix = os.path.basename(fname).replace(key, '')
+                try:
+                    f_lst = os.listdir(os.path.dirname(fname))
+                except (FileNotFoundError, OSError) as e:
+                    return a # should be handled upstream
+                truncated_paths = [os.path.join(dirname, f) for f in f_lst
+                        if f.startswith(prefix+_multikeys_shortest[key])]
+                if len(truncated_paths) > 1:
+                    raise log.warning("Multiple candidates for file truncated"
+                                      " by MultiNest. Bad things may happen!")
+                elif not len(truncated_paths):
+                    return a
+                a.__setattr__(file_attr, truncated_paths[0])
+
+        return a
+
+    return analyzer_filenames_restored
+
+
+def _get_analyzer(output_dir, name_id, suffix, ndims, chain_prefix='1-'):
+    chains_dir = '{}chains/{}_{}/{}'.format(output_dir, name_id, suffix,
+                                            chain_prefix)
+    a = pymultinest.Analyzer(outputfiles_basename=chains_dir, n_params=ndims)
+    return a
+
+@fix_truncated
+def get_analyzer(*args, **kwargs):
+    return _get_analyzer(*args, **kwargs)
+
+
 def analyzer_xy(x, y, npeaks, output_dir, name_id='g35-nh3', npars=6):
+    """ Initializes Analizer instances; prone to truncated filenames """
     suffix = 'x{}y{}'.format(x, y)
     return get_analyzer(
         output_dir=output_dir,
@@ -46,17 +142,10 @@ def analyzer_xy(x, y, npeaks, output_dir, name_id='g35-nh3', npars=6):
         chain_prefix='{}-'.format(npeaks))
 
 
-def get_analyzer(output_dir, name_id, suffix, ndims, chain_prefix='1-'):
-    chains_dir = '{}chains/{}_{}/{}'.format(output_dir, name_id, suffix,
-                                            chain_prefix)
-    a = pymultinest.Analyzer(outputfiles_basename=chains_dir, n_params=ndims)
-    return a
-
-
 def lnK_xy(peaks=[1, 2, 3], silent=False, dict_key_formatter='{}/{}',
            **kwargs):
     """
-    Returns Bayes' factors between given peak values.
+    Returns Bayes factors between given peak values.
 
     Additional keyword arguments are passed to analyzer_xy
     """
