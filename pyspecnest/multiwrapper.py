@@ -1,9 +1,9 @@
 from __future__ import division
-import numpy as np
-from astropy import log
+import functools
 from itertools import compress
 from collections import OrderedDict
-import functools
+import numpy as np
+from astropy import log
 
 
 class Parameter:
@@ -13,7 +13,6 @@ class Parameter:
     convenience methods for getting prior multipliers
     used later as pymultinest feed.
     """
-
     def __init__(self, name, nametex=None, prior=[0, 1], fixed=False,
                  **kwargs):
         self.name = name
@@ -220,20 +219,6 @@ class ModelContainer(OrderedDict):
         """ Pass ModelContainer uniform priors to MultiNest """
         for i, par in enumerate(self):
             a, b = self[par].get_uniform_mods()
-            cube[i] = cube[i] * a + b
-
-    def prior_restricted_xoff(self, cube, ndim, nparams):
-        """
-        Impose xoff_i < xoff_j for all i > j;
-        Flat priors otherwise. Doesn't quite work yet....
-        """
-        # FIXME: doesn't converge where we want it, needs debugging.
-        for i, par in enumerate(self):
-            if (i == 10) or (i == 16):
-                # FIXME: this has to be generalised...
-                a, b = self[par].limited_lower_mods(cube[i - 6])
-            else:
-                a, b = self[par].get_uniform_mods()
             cube[i] = cube[i] * a + b
 
     def log_likelihood(self, cube, ndims, nparams):

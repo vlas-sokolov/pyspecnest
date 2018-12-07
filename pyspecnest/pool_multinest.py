@@ -3,15 +3,17 @@ Instead of MPI parallelisation for each pixel, it is [citation needed] faster
 to simply distribute pixels to different processes via pooling. The speedup is
 not about the actual sampling, but the overheads are only executed once...
 """
+
 from __future__ import division
+import sys
+import time
+import multiprocessing
+import subprocess
 from collections import OrderedDict
+import numpy as np
 from astropy.io import fits
 from astropy import log
-import multiprocessing
-import numpy as np
-import subprocess
-import time
-import sys
+
 
 def get_log_file_fmatter(log_file=None, prefix='g35-nh3_',
                          proj_dir = '~/Projects/g35-vla-nh3/'):
@@ -23,6 +25,7 @@ def get_log_file_fmatter(log_file=None, prefix='g35-nh3_',
 
     return log_file_fmatter
 
+
 def get_logger(x, y, npeaks, log_file_fmatter=None):
     """ One log file per pixel to avoid race condition """
     if log_file_fmatter is None:
@@ -30,6 +33,7 @@ def get_logger(x, y, npeaks, log_file_fmatter=None):
     log_file = log_file_fmatter.format(x, y, npeaks)
 
     return open(log_file, "w")
+
 
 def work(cmd):
     """ Hacks around arg-feeding the shell while neatly redirecting stdout """
@@ -53,6 +57,7 @@ def work(cmd):
                            stdout = stdout,
                            shell = False)
 
+
 def get_xy_sorted(arr, xy_indices=None, cut = None):
     """
     Sort xy indices by a value array.
@@ -71,6 +76,7 @@ def get_xy_sorted(arr, xy_indices=None, cut = None):
                           yy.flat[arrsort][mask[arrsort]]))
     return sorted_arr
 
+
 def snr_order(line='nh311', snr11=None, snr22=None, **kwargs):
     """
     Was written for an ammonia cube data, have yet to generalize.
@@ -81,10 +87,12 @@ def snr_order(line='nh311', snr11=None, snr22=None, **kwargs):
 
     return get_xy_sorted(line_to_snr[line], np.indices(snr11.shape), **kwargs)
 
+
 def bayes_factor_order(kfile='Ks.fits', idx=0, **kwargs):
     K = fits.getdata(kfile)[idx]
 
     return get_xy_sorted(K, np.indices(K.shape), **kwargs)
+
 
 def get_vla_snr():
     """
@@ -95,6 +103,7 @@ def get_vla_snr():
     snrmap11, snrmap22 = cubes.snr11, cubes.snr22
 
     return snrmap11, snrmap22
+
 
 def xy_sorted_by(method='Bfactor', **kwargs):
     """
@@ -138,6 +147,7 @@ def try_get_args(n, fallback, forcetype=str):
 
     return arg
 
+
 if __name__ == '__main__':
     """ Example run, custom-tailored to the VLA data on G035.39. """
     # NOTE: normal dict would mess up the order of the arguments
@@ -159,8 +169,7 @@ if __name__ == '__main__':
 
     if method == 'Bfactor':
         # TODO FIXME:
-        raise NotImplementedError("What used to work, no longer does. "
-                                  "Don't go berserk, put blame on Vlas.")
+        raise NotImplementedError
 
     tasklist_kwargs.update(runtime_args)
 
@@ -168,6 +177,7 @@ if __name__ == '__main__':
 
     pool = multiprocessing.Pool(processes=n_cpu)
     pool.map(work, tasks)
+
 
 def testing_K_sort(Kfile='Ks.fits', index=0, debug=False):
     if debug:
@@ -186,6 +196,7 @@ def testing_K_sort(Kfile='Ks.fits', index=0, debug=False):
 
         log.debug("K = {:7.2f} at (x, y) = ({:2d}, "
                   "{:2d}), {} done".format(K_new, x, y, p))
+
 
 def testing_snr_sort(snrmap11=None, snrmap22=None, debug=False,
                      cut=5, line='nh311', n_cpu=7, run=False):

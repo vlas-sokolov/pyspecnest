@@ -1,13 +1,14 @@
 """ Functions that read in and analyze MultiNest chains """
+
 from __future__ import division
 import os
-import numpy as np
-import pymultinest
 import functools
-from uncertainties import ufloat, unumpy
 from itertools import combinations
+import numpy as np
 from astropy.io import fits
 from astropy import log
+from uncertainties import ufloat, unumpy
+import pymultinest
 
 # TODO: goal #2 is writing output fits files with MAP/MLE parameters
 # TODO: write up another function that makes npeaks map, but this time

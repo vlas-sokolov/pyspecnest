@@ -1,6 +1,7 @@
-import numpy as np
 import os
+import numpy as np
 from .multiwrapper import Parameter, ModelContainer
+
 
 # TODO: generalize it with the parameter names already present in pyspeckit!
 def get_n2dp_model(sp, std_noise, priors=None, npeaks=1, **kwargs):
@@ -35,42 +36,6 @@ def get_n2dp_model(sp, std_noise, priors=None, npeaks=1, **kwargs):
         **kwargs)
 
     return n2dp_model
-
-
-# setting various defaults here. but why?
-# because we want to `cat *.eggs > /dev/basket`
-def get_plot_model_kwargs():
-    plot_model_kwargs = dict(
-        linestyle='-', c='blue', alpha=0.3, linewidth=0.1, zorder=0.0)
-    return plot_model_kwargs
-
-
-def get_corner_kwargs(model, truepars=None):
-    if truepars is None:
-        truths = None
-    else:
-        truths = model.nonfixed(truepars)
-    corner_kwargs = dict(
-        labels=model.get_names(latex=True, no_fixed=True),
-        range=[0.999] * model.dof,
-        show_titles=True,
-        title_fmt='.3f',
-        smooth=None,
-        bins=20,
-        levels=1.0 - np.exp(-0.5 * np.arange(0.5, 3.1, 0.5)**2),
-        plot_contours=True,
-        plot_density=True,
-        quantiles=[0.16, 0.5, 0.84],  # +-1\sigma
-        truths=truths)
-    return corner_kwargs
-
-
-def get_pymultinest_kwargs():
-    pymultinest_kwargs = dict(
-        sampling_efficiency=0.8,
-        #resume = False,
-        verbose=True)
-    return pymultinest_kwargs
 
 
 def suffix_str(model, snr):

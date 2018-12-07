@@ -1,3 +1,5 @@
+""" Make a synthetic ammonia spectrum with pyspeckit """
+
 import numpy as np
 import astropy.units as u
 import pyspeckit
@@ -7,9 +9,6 @@ from pyspeckit.spectrum.units import SpectroscopicAxes
 
 def nh3_spectrum(pars, kms_vals, lines=['oneone', 'twotwo'], snr=5,
                  snr_line='oneone', seed=None):
-    """
-    Write me up!
-    """
     # building a spectroscopic axis
     xarr_dict = {}
     for line in lines:

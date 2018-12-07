@@ -2,9 +2,10 @@
 Inspired by the gaussian line example from PyMultiNest tutorials:
 http://johannesbuchner.github.io/pymultinest-tutorial/example2.html
 """
+
+import os
 import numpy as np
 import matplotlib.pylab as plt
-import os
 from astropy import log
 try:
     import pymultinest
@@ -13,13 +14,12 @@ except ImportError:
         "Abandon the ship! PyMultiNest not found! "
         "You can follow this neat installation walkthrough:\n"
         "http://astrobetter.com/wiki/MultiNest+Installation+Notes")
-import corner
 from .multiwrapper import Parameter, ModelContainer
 from .model_nh3 import nh3_spectrum
 
 
 def get_nh3_model(sp, lines, std_noise, priors=None, npeaks=1, **kwargs):
-    # initializing the model parameters
+    """ Set up a new model from ModelContainer """
     if priors is None:
         # set up dummy priors for an example run
         # FIXME: the popping techninque, amazing as
@@ -62,32 +62,11 @@ def get_nh3_model(sp, lines, std_noise, priors=None, npeaks=1, **kwargs):
     return nh3_model
 
 
-# setting various defaults here. but why?
-# because we want to `cat *.eggs > /dev/basket`
+# Setting some plotting defaults here. But why? It's for testing run only.
 def get_plot_model_kwargs():
     plot_model_kwargs = dict(
         linestyle='-', c='blue', alpha=0.3, linewidth=0.1, zorder=0.0)
     return plot_model_kwargs
-
-
-def get_corner_kwargs(model, truepars=None):
-    if truepars is None:
-        truths = None
-    else:
-        truths = model.nonfixed(truepars)
-    corner_kwargs = dict(
-        labels=model.get_names(latex=True, no_fixed=True),
-        range=[0.999] * model.dof,
-        show_titles=True,
-        title_fmt='.3f',
-        smooth=None,
-        bins=20,
-        levels=1.0 - np.exp(-0.5 * np.arange(0.5, 3.1, 0.5)**2),
-        plot_contours=True,
-        plot_density=True,
-        quantiles=[0.16, 0.5, 0.84],  # +-1\sigma
-        truths=truths)
-    return corner_kwargs
 
 
 def get_pymultinest_kwargs():
@@ -103,17 +82,6 @@ def suffix_str(model, snr):
     fixed_str = ''.join([{True: 'T', False: 'F'}[i] for i in model.fixed])
     out_suffix = '{}_snr{:n}'.format(fixed_str, snr)
     return out_suffix
-
-
-def get_pymultinest_dir(output_dir, prefix, suffix, subdir='chains'):
-    """ Sets up and returns multinest output directory """
-    local_dir = '{}/{}_{}/'.format(subdir, prefix, suffix)
-    pymultinest_output = os.path.join(output_dir, local_dir)
-
-    if not os.path.exists(pymultinest_output):
-        os.mkdir(pymultinest_output)
-
-    return pymultinest_output
 
 
 def synthetic_nh3_inference(sp=None, std_noise=None, npeaks=1,
@@ -147,12 +115,19 @@ def synthetic_nh3_inference(sp=None, std_noise=None, npeaks=1,
 
     nh3_model = get_nh3_model(
         sp, lines, std_noise, priors=priors, npeaks=npeaks)
-    fig_dir = output_dir + 'figs/'
+    fig_dir = os.path.join(output_dir, 'figs')
     if suffix is None:
         suffix = suffix_str(nh3_model, snr)
-    chain_file = output_dir + 'chains/{}-'.format(npeaks)
+    chain_dir = os.path.join(output_dir, 'chains')
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    if not os.path.exists(chain_dir):
+        os.mkdir(chain_dir)
+    if not os.path.exists(fig_dir):
+        os.mkdir(fig_dir)
+    chain_file = os.path.join(chain_dir, '{}-'.format(npeaks))
 
-    # fire up the multinest blackbox
+    # fire up multinest
     pymultinest.run(nh3_model.log_likelihood, nh3_model.prior_uniform,
         nh3_model.npars, outputfiles_basename=chain_file,
         **get_pymultinest_kwargs())
@@ -169,9 +144,12 @@ def synthetic_nh3_inference(sp=None, std_noise=None, npeaks=1,
     for pars in a.get_equal_weighted_posterior()[::10, :-1]:
         tmp = plt.plot(sp.xarr.value, nh3_model.model(pars=pars),
                        **get_plot_model_kwargs())
-    plt.savefig(fig_dir + "{}nh3-fit-x{}.pdf".format(suffix, npeaks))
+    plt.savefig(os.path.join(fig_dir,
+                "{}nh3-fit-x{}.pdf".format(suffix, npeaks)))
     plt.show()
 
+    # There used to be a plotting end to this function. Need to
+    # replace it with something more informative...
     # TODO: check 'mean' & 'sigma' values for those nodes
     #       under a.get_mode_stats()! looks like something
     #       local that I can compare to pyspeckit...
@@ -182,21 +160,18 @@ def synthetic_nh3_inference(sp=None, std_noise=None, npeaks=1,
     a_lnZ = a.get_stats()['global evidence']
     log.info('log Z for model with 1 line = %.1f' % (a_lnZ / np.log(10)))
 
-    fig_corner, axarr = plt.subplots(nh3_model.dof, nh3_model.dof,
-                                     figsize=(12, 10))
-    unfrozen_slice = nh3_model.get_nonfixed_slice(a.data.shape, axis=1)
-    corner.corner(a.data[:, 2:][unfrozen_slice], fig=fig_corner,
-                  **get_corner_kwargs(nh3_model, truepars))
-    plt.savefig(fig_dir + "{}nh3-corner-x{}.pdf".format(suffix, npeaks))
-    plt.show()
-
     return a
 
 
-if __name__ == "__main__":
-    # FIXME use `from go_home import home_dir` instead!
-    from os.path import expanduser
-    home_dir = expanduser('~') + '/'
-    output_dir = home_dir + 'Projects/g35-scripts/bayesianity/'
+def main():
+    """ Runs a sample script and outputs in the new directory """
+
+    output_dir = 'bayesianity/'  # The trailing slash is mandatory!
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     synthetic_nh3_inference(snr=3, output_dir=output_dir)
+
+
+if __name__ == "__main__":
+    main()
