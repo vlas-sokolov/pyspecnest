@@ -270,7 +270,7 @@ def get_stats_fast(a, stat=''):
             else:
                 stat_result.append(line_arr)
 
-    return np.squeeze(np.array(stat_result)[:, 1:].T)
+    return np.squeeze(np.array(stat_result)[:, 1:].T), np.squeeze(np.array(stat_result)[:, 2:].T)
 
 
 def get_stats(a, mode="slow"):
@@ -417,13 +417,14 @@ def pars_xy(x, y, mode='fast', stat='mle', **kwargs):
     try:
         if mode == 'slow':
             pars = a.get_best_fit()['parameters']
+            errs = pars * np.nan # what should be the proper here?
         elif mode == "fast":
-            pars = get_stats_fast(a, stat=stat)
+            pars, errs = get_stats_fast(a, stat=stat)
         else:
             raise ValueError("mode should be one of the ['slow', 'fast']")
     except IOError:
-        return np.nan
-    return pars
+        return np.nan, np.nan
+    return pars, errs
 
 
 def parcube(shape, npeaks, npars, origin=(0, 0),
@@ -448,11 +449,11 @@ def parcube(shape, npeaks, npars, origin=(0, 0),
     errcube = parcube.copy()
 
     for y, x in np.ndindex(shape):
-        pars = pars_xy(x=x, y=y, npars=npars, npeaks=npeaks, **kwargs)
+        pars, errs = pars_xy(x=x, y=y, npars=npars, npeaks=npeaks, **kwargs)
         parcube[:, y, x] = pars
         print(parcube[:, y, x])
         # FIXME: get the confidence intervals on pars as well
-        errcube[:, y, x] = np.nan
+        errcube[:, y, x] = errs
 
     header = _tinker_header(header, ctype3='BEST FIT PARAMETERS',
                             bunit='VARIOUS')
