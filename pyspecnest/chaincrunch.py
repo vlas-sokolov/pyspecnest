@@ -252,8 +252,9 @@ def get_stats_fast(a, stat=''):
     trigger = {'mean': 'Mean',
                'mle': 'Maximum Likelihood',
                'map': 'MAP Parameters'}
-    sweet_spot = False
 
+    # Find parameter value
+    sweet_spot = False
     stat_result = []
 
     stats_file = open(a.stats_file)
@@ -270,7 +271,25 @@ def get_stats_fast(a, stat=''):
             else:
                 stat_result.append(line_arr)
 
-    return np.squeeze(np.array(stat_result)[:, 1:].T)
+    # Find parameter uncertainty
+    sweet_spot = False
+    sigma_result = []
+
+    stats_file = open(a.stats_file)
+    for l in stats_file.readlines():
+        if 'Sigma' in l:
+            sweet_spot = True
+            continue
+        if sweet_spot:
+            if l.startswith('Dim No.'):
+                continue
+            line_arr = np.fromstring(l.strip(), sep=' ')
+            if line_arr.size == 0:
+                sweet_spot = False
+            else:
+                sigma_result.append(line_arr)
+
+    return np.squeeze(np.array(stat_result)[:, 1:].T), np.squeeze(np.array(sigma_result)[:, 2:].T)
 
 
 def get_stats(a, mode="slow"):
@@ -417,13 +436,14 @@ def pars_xy(x, y, mode='fast', stat='mle', **kwargs):
     try:
         if mode == 'slow':
             pars = a.get_best_fit()['parameters']
+            errs = a.get_stats()['modes'][0]['sigma'] # Using symetrical sigma
         elif mode == "fast":
-            pars = get_stats_fast(a, stat=stat)
+            pars, errs = get_stats_fast(a, stat=stat)
         else:
             raise ValueError("mode should be one of the ['slow', 'fast']")
     except IOError:
-        return np.nan
-    return pars
+        return np.nan, np.nan
+    return pars, errs
 
 
 def parcube(shape, npeaks, npars, origin=(0, 0),
@@ -448,11 +468,12 @@ def parcube(shape, npeaks, npars, origin=(0, 0),
     errcube = parcube.copy()
 
     for y, x in np.ndindex(shape):
-        pars = pars_xy(x=x, y=y, npars=npars, npeaks=npeaks, **kwargs)
+        pars, errs = pars_xy(x=x, y=y, npars=npars, npeaks=npeaks, **kwargs)
         parcube[:, y, x] = pars
         print(parcube[:, y, x])
         # FIXME: get the confidence intervals on pars as well
-        errcube[:, y, x] = np.nan
+        print(errs)
+        errcube[:, y, x] = errs
 
     header = _tinker_header(header, ctype3='BEST FIT PARAMETERS',
                             bunit='VARIOUS')
