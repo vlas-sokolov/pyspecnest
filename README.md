@@ -8,3 +8,5 @@ git clone https://github.com/vlas-sokolov/pyspecnest.git
 cd pyspecnest
 pip install .
 ```
+
+Was used for [this](https://github.com/vlas-sokolov/bayesian-ngc1333), which containes a rather more detailed example of the usage.
